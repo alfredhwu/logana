@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-    <title>Bootstrap 101 Template</title>
+    <title>日志分析</title>
 
     <!-- Bootstrap -->
     <link href="assets/bootstrap/css/bootstrap.min.css" rel="stylesheet">
@@ -56,27 +56,63 @@
     </nav>
 
     <div class="container">
-      <h2>Overall Visis</h2>
+      <h2>总体访问量</h2>
       <div class="row">
-        <div class="col-lg-4" id="overall-visit">
+        <div class="col-lg-6" id="overall-visit">
           <div class="view"></div>
         </div>
-        <div class="col-lg-8" id="main" style="height:400px"></div>
+      </div>
+      <div class="row">
+        <div class="col-lg-12" id="overall-visit-chart" style="height:400px"></div>
       </div>
 
-      <h2>Response Code</h2>
+
+      <h2>数据吞吐量</h2>
       <div class="row">
-        <div class="col-lg-4" id="response-code">
+        <div class="col-lg-6" id="overall-dataflow">
           <div class="view"></div>
         </div>
-
+      </div>
+      <div class="row">
+        <div class="col-lg-12" id="overall-dataflow-chart" style="height:400px"></div>
       </div>
 
-      <h2>Global Stats</h2>
+      <h2>访问状态</h2>
       <div class="row">
-        <div class="col-lg-4" id="global-stats">
+        <div class="col-lg-6" id="response-code">
           <div class="view"></div>
         </div>
+        <div class="col-lg-6" id="response-code-chart" style="height:400px"></div>
+      </div>
+
+      <h2>响应时间</h2>
+      <div class="row">
+        <div class="col-lg-6" id="global-stats">
+          <div class="view"></div>
+        </div>
+      </div>
+      <div>
+        <div class="col-lg-12" id="global-stats-chart" style="height:400px"></div>
+      </div>
+
+
+      <h2>响应时间分布</h2>
+      <div class="row">
+        <div class="col-lg-6" id="percentile-analysis">
+          <div class="view"></div>
+        </div>
+        <div class="col-lg-6" id="percentile-analysis-chart" style="height:400px"></div>
+      </div>
+
+
+      <h2>访问来源分析</h2>
+      <div class="row">
+        <div class="col-lg-6" id="user-origin">
+          <div class="view"></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-lg-12" id="user-origin-chart" style="height:400px"></div>
       </div>
 
       <footer class="footer">
@@ -84,6 +120,7 @@
       </footer>
     </div><!-- /container -->
 
+    <script src="assets/js/moment.js"></script>
 
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
     <script src="assets/js/jquery-1.11.3.min.js"></script>
@@ -92,7 +129,6 @@
     <script src="assets/echarts/echarts.js"></script>
 
     <script src="assets/js/logana.js"></script>
-
 
     <script type="text/javascript">
       require.config({
@@ -104,7 +140,7 @@
 
     <script type="text/javascript">
       $(document).ready(function() {
-        var date_histogram = {
+        var overall_visit = {
           "query" : {
             "filtered" : {
               "filter": {
@@ -112,7 +148,9 @@
                   "must": [
                     {
                       "range" : {
-                        "timestamp" : { "from" : "2015-05-25 16:00:00.000" }
+                        "timestamp" : { 
+                          "from" : moment().subtract(1, "days").format("YYYY-MM-DD HH:00:00.000")
+                        }
                       }
                     }
                   ]
@@ -125,7 +163,7 @@
             "visit": {
               "date_histogram": {
                 "field" : "timestamp",
-                "interval" : "hour",
+                "interval" : "minute",
                 "format" : "HH:mm:ss",
                 "extended_bounds" : {
                   "min" : "00:00:00",
@@ -135,55 +173,141 @@
             }
           }
         };        
-        $.post("http://10.68.129.27:9200/graylog2_1/_search?search_type=count", 
-          JSON.stringify(date_histogram), 
+        $.post("http://10.68.129.27:9200/graylog2_2/_search?search_type=count", 
+          JSON.stringify(overall_visit), 
           function(result) {
-          $('#overall-visit .view').html(JSON.stringify(result.aggregations));
+          //$('#overall-visit .view').html(JSON.stringify(result.aggregations));
           var timeline = [];
           var visit = [];
           var buckets = result.aggregations.visit.buckets;
           for (var i=0; i<buckets.length; i++) {
-            timeline.push(buckets[i].key);
+            timeline.push(moment(buckets[i].key).format("HH:mm"));
             visit.push(buckets[i].doc_count);
           };
+          require(
+            [
+              'echarts',
+              'echarts/chart/bar'
+            ],
+            function(ec) {
+              var myChart = ec.init(document.getElementById('overall-visit-chart'));           
+              var option = {
+                  tooltip: { show: true },
+                  legend: { data:['总体访问量'] },
+                  xAxis : [
+                      {
+                          type : 'category',
+                          data : timeline
+                      }
+                  ],
+                  yAxis : [
+                      {
+                          type : 'value'
+                      }
+                  ],
+                  series : [
+                      {
+                          "name":"总体访问量",
+                          "type":"bar",
+                          "data":visit
+                      }
+                  ]
+              };  
+              // 为echarts对象加载数据 
+              myChart.setOption(option); 
+            }
+          );
         }).fail(function (jqXHR, textStatus, errorThrown) {
           alert(JSON.stringify(jqXHR));
         });
 
-      //   require(
-      //   [
-      //     'echarts',
-      //     'echarts/chart/bar'
-      //   ],
-      //   function(ec) {
-      //     var myChart = ec.init(document.getElementById('main'));           
-      //     var option = {
-      //         tooltip: { show: true },
-      //         legend: { data:['销量'] },
-      //         xAxis : [
-      //             {
-      //                 type : 'category',
-      //                 data : ["衬衫","羊毛衫","雪纺衫","裤子","高跟鞋","袜子"]
-      //             }
-      //         ],
-      //         yAxis : [
-      //             {
-      //                 type : 'value'
-      //             }
-      //         ],
-      //         series : [
-      //             {
-      //                 "name":"销量",
-      //                 "type":"bar",
-      //                 "data":[5, 20, 40, 10, 10, 20]
-      //             }
-      //         ]
-      //     };  
-      //     // 为echarts对象加载数据 
-      //     myChart.setOption(option); 
-      //   }
-      // );
-
+        var overall_dataflow = {
+          "query" : {
+            "filtered" : {
+              "filter": {
+                "bool": {
+                  "must": [
+                    {
+                      "range" : {
+                        "timestamp" : { 
+                          "from" : moment().subtract(1, "days").format("YYYY-MM-DD HH:00:00.000")
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "size" : 0,
+          "aggs" : {
+            "visit": {
+              "date_histogram": {
+                "field" : "timestamp",
+                "interval" : "minute",
+                "format" : "HH:mm:ss",
+                "extended_bounds" : {
+                  "min" : "00:00:00",
+                  "max" : "23:59:59"
+                }
+              },
+              "aggs" : {
+                "dataflow" : {
+                  "sum" : {
+                    "field" : "response_bytes"
+                  }
+                }
+              }
+            }
+          }
+        };        
+        $.post("http://10.68.129.27:9200/graylog2_2/_search?search_type=count", 
+          JSON.stringify(overall_dataflow), 
+          function(result) {
+          //$('#overall-dataflow .view').html(JSON.stringify(result.aggregations));
+          var timeline = [];
+          var dataflow = [];
+          var buckets = result.aggregations.visit.buckets;
+          for (var i=0; i<buckets.length; i++) {
+            timeline.push(moment(buckets[i].key).format("HH:mm"));
+            dataflow.push(buckets[i].dataflow.value / 1024);
+          };
+          require(
+            [
+              'echarts',
+              'echarts/chart/bar'
+            ],
+            function(ec) {
+              var myChart = ec.init(document.getElementById('overall-dataflow-chart'));           
+              var option = {
+                  tooltip: { show: true },
+                  legend: { data:['总数据吞吐(kB)'] },
+                  xAxis : [
+                      {
+                          type : 'category',
+                          data : timeline
+                      }
+                  ],
+                  yAxis : [
+                      {
+                          type : 'value'
+                      }
+                  ],
+                  series : [
+                      {
+                          "name":"总数据吞吐(kB)",
+                          "type":"bar",
+                          "data":dataflow
+                      }
+                  ]
+              };  
+              // 为echarts对象加载数据 
+              myChart.setOption(option); 
+            }
+          );
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+          alert(JSON.stringify(jqXHR));
+        });
 
         var cat_by_code = {
           "query" : {
@@ -191,7 +315,7 @@
               "filter" : {
                 "range" : {
                   "timestamp" : {
-                    "from" : "2015-05-26 00:00:00.000"
+                    "from" : moment().subtract(1, "days").format("YYYY-MM-DD HH:00:00.000")
                   }
                 }
               }
@@ -201,7 +325,10 @@
           "aggs" : {
             "resp_codes" : {
               "terms" : {
-                "field" : "response_status"
+                "field" : "response_status",
+                "order": {
+                    "_term": "asc"
+                }
               }
             }
           }
@@ -209,10 +336,92 @@
         // loadESData(data, function(result) {
         //   $('#response-code .view').html(JSON.stringify(result.aggregations));
         // });
-        $.post("http://10.68.129.27:9200/graylog2_1/_search?search_type=count", 
+        $.post("http://10.68.129.27:9200/graylog2_2/_search?search_type=count", 
           JSON.stringify(cat_by_code), 
           function(result) {
           $('#response-code .view').html(JSON.stringify(result.aggregations));
+          var code = [];
+          var code_count = [];
+          var buckets = result.aggregations.resp_codes.buckets;
+          for (var i=0; i<buckets.length; i++) {
+            code.push(buckets[i].key);
+            code_count.push({
+              value: buckets[i].doc_count,
+              name: buckets[i].key
+            });
+          };
+          require(
+            [
+              'echarts',
+              'echarts/chart/pie'
+            ],
+            function(ec) {
+              var myChart = ec.init(document.getElementById('response-code-chart'));   
+              var option = {
+                tooltip : {
+                    trigger: 'item',
+                    formatter: "{a} <br/>{b} : {c} ({d}%)"
+                },
+                legend: {
+                    orient : 'vertical',
+                    x : 'left',
+                    data:code
+                },
+                toolbox: {
+                    show : true,
+                    feature : {
+                        mark : {show: true},
+                        dataView : {show: true, readOnly: false},
+                        magicType : {
+                            show: true, 
+                            type: ['pie', 'funnel'],
+                            option: {
+                                funnel: {
+                                    x: '25%',
+                                    width: '50%',
+                                    funnelAlign: 'center',
+                                    max: 1548
+                                }
+                            }
+                        },
+                        restore : {show: true},
+                        saveAsImage : {show: true}
+                    }
+                },
+                calculable : true,
+                series : [
+                    {
+                        name:'Respond Code',
+                        type:'pie',
+                        radius : ['50%', '70%'],
+                        itemStyle : {
+                            normal : {
+                                label : {
+                                    show : false
+                                },
+                                labelLine : {
+                                    show : false
+                                }
+                            },
+                            emphasis : {
+                                label : {
+                                    show : true,
+                                    position : 'center',
+                                    textStyle : {
+                                        fontSize : '30',
+                                        fontWeight : 'bold'
+                                    }
+                                }
+                            }
+                        },
+                        data:code_count
+                    }
+                ]
+              };
+              // 为echarts对象加载数据 
+              myChart.setOption(option); 
+            }
+          );
         }).fail(function (jqXHR, textStatus, errorThrown) {
           alert(JSON.stringify(jqXHR));
         });
@@ -223,17 +432,30 @@
               "filter" : {
                 "range" : {
                   "timestamp" : {
-                    "from" : "2015-05-26 00:00:00.000"
+                    "from" : moment().subtract(1, "days").format("YYYY-MM-DD HH:00:00.000")
                   }
                 }
               }
             }
           },
           "size" : 0,
-          "aggs" : {
-            "global_stats" : {
-              "extended_stats" : {
-                "field" : "millis"
+          "aggs": {
+            "resp_times": {
+              "date_histogram": {
+                "field" : "timestamp",
+                "interval" : "hour",
+                "format" : "HH:mm:ss",
+                "extended_bounds" : {
+                  "min" : "00:00:00",
+                  "max" : "23:59:59"
+                }
+              },
+              "aggs" : {
+                "stats" : {
+                  "extended_stats": {
+                    "field": "millis"
+                  }
+                }
               }
             }
           }
@@ -241,14 +463,269 @@
         // loadESData(data, function(result) {
         //   $('#response-code .view').html(JSON.stringify(result.aggregations));
         // });
-        $.post("http://10.68.129.27:9200/graylog2_1/_search?search_type=count", 
+        $.post("http://10.68.129.27:9200/graylog2_2/_search?search_type=count", 
           JSON.stringify(global_stats), 
           function(result) {
-          $('#global-stats .view').html(JSON.stringify(result.aggregations));
+          //$('#global-stats .view').html(JSON.stringify(result));    
+
+          var timeline = [];
+          var avg_data = [];
+          var min_data = [];
+          var max_data = [];
+          var buckets = result.aggregations.resp_times.buckets;
+          for (var i=0; i<buckets.length; i++) {
+            timeline.push(moment(buckets[i].key).format("HH:00"));
+            var stat = buckets[i].stats;
+            avg_data.push(stat.avg);
+            min_data.push(stat.min);
+            max_data.push(stat.max);
+          };
+
+          require(
+            [
+              'echarts',
+              'echarts/chart/line'
+            ],
+            function(ec) {
+              var myChart = ec.init(document.getElementById('global-stats-chart'));   
+              var option = {
+               title: {
+                   text: "响应时间",
+                   x: "center"
+               },
+               tooltip: {
+                   trigger: "item",
+                   formatter: "{a} <br/>{c} ms"
+               },
+               legend: {
+                   x: 'left',
+                   data: ["最快响应时间", "平均响应时间", "最慢响应时间"]
+               },
+               xAxis: [
+                   {
+                       type: "category",
+                       name: "x",
+                       splitLine: {show: false},
+                       data: timeline
+                   }
+               ],
+               yAxis: [
+                   {
+                       type: "log",
+                       name: "y"
+                   }
+               ],
+                toolbox: {
+                   show: true,
+                   feature: {
+                       mark: {
+                           show: true
+                       },
+                       dataView: {
+                           show: true,
+                           readOnly: true
+                       },
+                       restore: {
+                           show: true
+                       },
+                       saveAsImage: {
+                           show: true
+                       }
+                   }
+               },
+               calculable: true,
+               series: [
+                   {
+                       name: "最快响应时间",
+                       type: "line",
+                       data: min_data
+                   },
+                   {
+                       name: "平均响应时间",
+                       type: "line",
+                       data: avg_data
+                   },
+                   {
+                       name: "最慢响应时间",
+                       type: "line",
+                       data: max_data
+                   }
+               ]
+              };
+                    
+              // 为echarts对象加载数据 
+              myChart.setOption(option); 
+            }
+          );
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+          alert(JSON.stringify(jqXHR));
+        });
+
+        var percentile_analysis = {
+          "query" : {
+            "filtered" : {
+              "filter" : {
+                "range" : {
+                  "timestamp" : {
+                    "from" : moment().subtract(1, "days").format("YYYY-MM-DD HH:00:00.000")
+                  }
+                }
+              }
+            }
+          },
+          "size" : 0,
+          "aggs": {
+              "resp_times": {
+                "date_histogram": {
+                  "field" : "timestamp",
+                  "interval" : "hour",
+                  "format" : "HH:mm:ss",
+                  "extended_bounds" : {
+                    "min" : "00:00:00",
+                    "max" : "23:59:59"
+                  }
+                },
+                "aggs" : {
+                  "resp_time" : {
+                    "percentiles": {
+                        "field": "millis",
+                        "percents": [
+                            10,
+                            50,
+                            75,
+                            90
+                        ]
+                    }
+                  }
+                }
+              }
+          }
+        };
+        // loadESData(data, function(result) {
+        //   $('#response-code .view').html(JSON.stringify(result.aggregations));
+        // });
+        $.post("http://10.68.129.27:9200/graylog2_2/_search?search_type=count", 
+          JSON.stringify(percentile_analysis), 
+          function(result) {
+          //$('#percentile-analysis .view').html(JSON.stringify(result));
+
+          var timeline = [];
+          var percentiles = [];
+          var buckets = result.aggregations.resp_times.buckets;
+          for (var i=0; i<buckets.length; i++) {
+            timeline.push(moment(buckets[i].key).format("HH:00"));
+            var perc = buckets[i].resp_time.values;
+            percentiles.push([perc["50.0"], perc["75.0"], perc["10.0"], perc["90.0"]]);
+          };
+
+          require(
+            [
+              'echarts',
+              'echarts/chart/k'
+            ],
+            function(ec) {
+              var myChart = ec.init(document.getElementById('percentile-analysis-chart'));   
+              var option = {
+                title : {
+                    text: '响应时间分布'
+                },
+                tooltip : {
+                    trigger: 'axis',
+                    formatter: function (params) {
+                        var res = params[0].seriesName + ' ' + params[0].name;
+                        res += '<br/>  10% : ' + params[0].value[2] + ' ms  50% : ' + params[0].value[0] + ' ms';
+                        res += '<br/>  75% : ' + params[0].value[1] + ' ms  90% : ' + params[0].value[3] + ' ms';
+                        return res;
+                    }
+                },
+                legend: {
+                    data:['响应时间分布']
+                },
+                toolbox: {
+                    show : true,
+                    feature : {
+                        mark : {show: true},
+                        dataZoom : {show: true},
+                        dataView : {show: true, readOnly: false},
+                        magicType: {show: true, type: ['line', 'bar']},
+                        restore : {show: true},
+                        saveAsImage : {show: true}
+                    }
+                },
+                dataZoom : {
+                    show : true,
+                    realtime: true,
+                    start : 50,
+                    end : 100
+                },
+                xAxis : [
+                    {
+                        type : 'category',
+                        boundaryGap : true,
+                        axisTick: {onGap:false},
+                        splitLine: {show:false},
+                        data : timeline
+                    }
+                ],
+                yAxis : [
+                    {
+                        type : 'value',
+                        scale:true,
+                        boundaryGap: [0.01, 0.01]
+                    }
+                ],
+                series : [
+                    {
+                        name:'响应时间分布',
+                        type:'k',
+                        data: percentiles
+                    }
+                ]
+              };
+              // 为echarts对象加载数据 
+              myChart.setOption(option); 
+            }
+          );
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+          alert(JSON.stringify(jqXHR));
+        });
+
+        var remote_addr = {
+          "query" : {
+            "filtered" : {
+              "filter": {
+                "bool": {
+                  "must": [
+                    {
+                      "range" : {
+                        "timestamp" : { 
+                          "from" : moment().subtract(1, "days").format("YYYY-MM-DD HH:00:00.000")
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "size" : 0,
+          "aggs" : {
+            "visit": {
+              "terms": {
+                "field" : "remote_addr"
+              }
+            }
+          }
+        };        
+        $.post("http://10.68.129.27:9200/graylog2_2/_search?search_type=count", 
+          JSON.stringify(remote_addr), 
+          function(result) {
+          $('#user-origin .view').html(JSON.stringify(result));
         }).fail(function (jqXHR, textStatus, errorThrown) {
           alert(JSON.stringify(jqXHR));
         });
       });
+
     </script>
   </body>
 </html>
