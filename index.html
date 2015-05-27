@@ -56,19 +56,26 @@
     </nav>
 
     <div class="container">
-      <h1>Timeline analysis</h1>
+      <h2>Overall Visis</h2>
       <div class="row">
         <div class="col-lg-4" id="overall-visit">
-          <h2>Overall Visis</h2>
           <div class="view"></div>
         </div>
-        <div class="col-lg-4">
-          <h2>Blah blah</h2>
-          <p>llllllll</p>
+        <div class="col-lg-8" id="main" style="height:400px"></div>
+      </div>
+
+      <h2>Response Code</h2>
+      <div class="row">
+        <div class="col-lg-4" id="response-code">
+          <div class="view"></div>
         </div>
-        <div class="col-lg-4">
-          <h2>Blah blah</h2>
-          <p>llllllll</p>
+
+      </div>
+
+      <h2>Global Stats</h2>
+      <div class="row">
+        <div class="col-lg-4" id="global-stats">
+          <div class="view"></div>
         </div>
       </div>
 
@@ -82,12 +89,164 @@
     <script src="assets/js/jquery-1.11.3.min.js"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
     <script src="assets/bootstrap/js/bootstrap.min.js"></script>
+    <script src="assets/echarts/echarts.js"></script>
 
     <script src="assets/js/logana.js"></script>
+
+
+    <script type="text/javascript">
+      require.config({
+          paths: {
+              echarts: 'assets/echarts'
+          }
+      });
+    </script>
+
     <script type="text/javascript">
       $(document).ready(function() {
-        $.post("http://10.68.129.27:9200/_search", function(result) {
-          alert(result);
+        var date_histogram = {
+          "query" : {
+            "filtered" : {
+              "filter": {
+                "bool": {
+                  "must": [
+                    {
+                      "range" : {
+                        "timestamp" : { "from" : "2015-05-25 16:00:00.000" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "size" : 0,
+          "aggs" : {
+            "visit": {
+              "date_histogram": {
+                "field" : "timestamp",
+                "interval" : "hour",
+                "format" : "HH:mm:ss",
+                "extended_bounds" : {
+                  "min" : "00:00:00",
+                  "max" : "23:59:59"
+                }
+              }
+            }
+          }
+        };        
+        $.post("http://10.68.129.27:9200/graylog2_1/_search?search_type=count", 
+          JSON.stringify(date_histogram), 
+          function(result) {
+          $('#overall-visit .view').html(JSON.stringify(result.aggregations));
+          var timeline = [];
+          var visit = [];
+          var buckets = result.aggregations.visit.buckets;
+          for (var i=0; i<buckets.length; i++) {
+            timeline.push(buckets[i].key);
+            visit.push(buckets[i].doc_count);
+          };
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+          alert(JSON.stringify(jqXHR));
+        });
+
+      //   require(
+      //   [
+      //     'echarts',
+      //     'echarts/chart/bar'
+      //   ],
+      //   function(ec) {
+      //     var myChart = ec.init(document.getElementById('main'));           
+      //     var option = {
+      //         tooltip: { show: true },
+      //         legend: { data:['销量'] },
+      //         xAxis : [
+      //             {
+      //                 type : 'category',
+      //                 data : ["衬衫","羊毛衫","雪纺衫","裤子","高跟鞋","袜子"]
+      //             }
+      //         ],
+      //         yAxis : [
+      //             {
+      //                 type : 'value'
+      //             }
+      //         ],
+      //         series : [
+      //             {
+      //                 "name":"销量",
+      //                 "type":"bar",
+      //                 "data":[5, 20, 40, 10, 10, 20]
+      //             }
+      //         ]
+      //     };  
+      //     // 为echarts对象加载数据 
+      //     myChart.setOption(option); 
+      //   }
+      // );
+
+
+        var cat_by_code = {
+          "query" : {
+            "filtered" : {
+              "filter" : {
+                "range" : {
+                  "timestamp" : {
+                    "from" : "2015-05-26 00:00:00.000"
+                  }
+                }
+              }
+            }
+          },
+          "size" : 0,
+          "aggs" : {
+            "resp_codes" : {
+              "terms" : {
+                "field" : "response_status"
+              }
+            }
+          }
+        };
+        // loadESData(data, function(result) {
+        //   $('#response-code .view').html(JSON.stringify(result.aggregations));
+        // });
+        $.post("http://10.68.129.27:9200/graylog2_1/_search?search_type=count", 
+          JSON.stringify(cat_by_code), 
+          function(result) {
+          $('#response-code .view').html(JSON.stringify(result.aggregations));
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+          alert(JSON.stringify(jqXHR));
+        });
+
+        var global_stats = {
+          "query" : {
+            "filtered" : {
+              "filter" : {
+                "range" : {
+                  "timestamp" : {
+                    "from" : "2015-05-26 00:00:00.000"
+                  }
+                }
+              }
+            }
+          },
+          "size" : 0,
+          "aggs" : {
+            "global_stats" : {
+              "extended_stats" : {
+                "field" : "millis"
+              }
+            }
+          }
+        };
+        // loadESData(data, function(result) {
+        //   $('#response-code .view').html(JSON.stringify(result.aggregations));
+        // });
+        $.post("http://10.68.129.27:9200/graylog2_1/_search?search_type=count", 
+          JSON.stringify(global_stats), 
+          function(result) {
+          $('#global-stats .view').html(JSON.stringify(result.aggregations));
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+          alert(JSON.stringify(jqXHR));
         });
       });
     </script>
