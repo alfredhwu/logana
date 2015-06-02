@@ -173,7 +173,7 @@
             }
           }
         };        
-        $.post("http://10.68.129.27:9200/graylog2_2/_search?search_type=count", 
+        $.post("http://10.68.129.27:9200/_search?search_type=count", 
           JSON.stringify(overall_visit), 
           function(result) {
           //$('#overall-visit .view').html(JSON.stringify(result.aggregations));
@@ -261,7 +261,7 @@
             }
           }
         };        
-        $.post("http://10.68.129.27:9200/graylog2_2/_search?search_type=count", 
+        $.post("http://10.68.129.27:9200/_search?search_type=count", 
           JSON.stringify(overall_dataflow), 
           function(result) {
           //$('#overall-dataflow .view').html(JSON.stringify(result.aggregations));
@@ -337,7 +337,7 @@
         // loadESData(data, function(result) {
         //   $('#response-code .view').html(JSON.stringify(result.aggregations));
         // });
-        $.post("http://10.68.129.27:9200/graylog2_2/_search?search_type=count", 
+        $.post("http://10.68.129.27:9200/_search?search_type=count", 
           JSON.stringify(cat_by_code), 
           function(result) {
           $('#response-code .view').html(JSON.stringify(result.aggregations));
@@ -464,7 +464,7 @@
         // loadESData(data, function(result) {
         //   $('#response-code .view').html(JSON.stringify(result.aggregations));
         // });
-        $.post("http://10.68.129.27:9200/graylog2_2/_search?search_type=count", 
+        $.post("http://10.68.129.27:9200/_search?search_type=count", 
           JSON.stringify(global_stats), 
           function(result) {
           //$('#global-stats .view').html(JSON.stringify(result));    
@@ -605,7 +605,7 @@
         // loadESData(data, function(result) {
         //   $('#response-code .view').html(JSON.stringify(result.aggregations));
         // });
-        $.post("http://10.68.129.27:9200/graylog2_2/_search?search_type=count", 
+        $.post("http://10.68.129.27:9200/_search?search_type=count", 
           JSON.stringify(percentile_analysis), 
           function(result) {
           //$('#percentile-analysis .view').html(JSON.stringify(result));
@@ -718,7 +718,7 @@
             }
           }
         };        
-        $.post("http://10.68.129.27:9200/graylog2_2/_search?search_type=count", 
+        $.post("http://10.68.129.27:9200/_search?search_type=count", 
           JSON.stringify(remote_addr), 
           function(result) {
           $('#user-origin .view').html(JSON.stringify(result));
